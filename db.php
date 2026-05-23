@@ -2,14 +2,16 @@
 header("Access-Control-Allow-Origin: *");
 header("Content-Type: application/json; charset=utf-8");
 
-$host = "localhost";
-$db_name = "swim_academy";
+$host = "trolley.proxy.rlwy.net";
+$port = "48962";
+$db_name = "railway";
 $username = "root";
-$password = "";
+$password = "GtXYQtWHqnXAHOsIVWRloGSXJOrMoqEK";
 $conn = null;
 
 try {
-    $conn = new PDO("mysql:host=$host;dbname=$db_name;charset=utf8", $username, $password);
+    // تم إضافة الـ port هنا في سطر الاتصال
+    $conn = new PDO("mysql:host=$host;port=$port;dbname=$db_name;charset=utf8", $username, $password);
     $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     $conn->exec("set names utf8");
 } catch(PDOException $exception) {
