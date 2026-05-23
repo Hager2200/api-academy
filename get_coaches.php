@@ -5,7 +5,8 @@ header("Content-type: application/json; charset=UTF-8");
 include_once 'db.php';
 
 try {
-    $query = "SELECT id, name FROM manager";
+    // تم تعديل الجدول إلى coach ليعود ببيانات المدربين
+    $query = "SELECT id, name FROM coach";
     $stmt = $conn->prepare($query);
     $stmt->execute();
 

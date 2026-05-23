@@ -5,20 +5,22 @@ include_once 'db.php';
 
 $data = json_decode(file_get_contents("php://input"));
 
-if (!empty($data->swimmer_id) && empty($data->coach_id) && !empty($data->booking_data)) {
+// تم التعديل للتأكد من وجود معرف المدرب
+if (!empty($data->swimmer_id) && !empty($data->coach_id) && !empty($data->booking_data)) {
     try {
+        // تم تصحيح العلامة قبل b_data لتصبح نقطتين رأسيين :
         $query = "INSERT INTO bookings
                  (swimmer_id, coach_id, booking_data, status)
                  VALUES
-                 ( :s_id, :c_id, ;b_data, 'pending')";
+                 (:s_id, :c_id, :b_data, 'pending')";
         $stmt = $conn->prepare($query);
 
         $stmt->bindParam(':s_id', $data->swimmer_id);
         $stmt->bindParam(':c_id', $data->coach_id);
-        $stmt->bindParam(':b_id', $data->booking_data);
+        // تم تعديل البارامتر هنا إلى :b_data ليتطابق مع الاستعلام
+        $stmt->bindParam(':b_data', $data->booking_data);
 
         if ($stmt->execute()) {
-
             echo json_encode([
                 "status" => "success",
                 "message" => "Booking created successfully"
@@ -32,9 +34,10 @@ if (!empty($data->swimmer_id) && empty($data->coach_id) && !empty($data->booking
     
     } catch (PDOException $e) {
         echo json_encode([
-            "status" => $e->getMessage()
+            "status" => "error",
+            "message" => $e->getMessage()
         ]);
-        }
+    }
 } else {
     echo json_encode([
         "status" => "error",
@@ -42,5 +45,3 @@ if (!empty($data->swimmer_id) && empty($data->coach_id) && !empty($data->booking
     ]);
 }
 ?>
-   
-    
