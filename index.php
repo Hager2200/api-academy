@@ -1,42 +1,16 @@
 <?php
+// إعدادات الـ Headers للسماح بالوصول وتحديد نوع البيانات
 header("Access-Control-Allow-Origin: *");
 header("Content-Type: application/json; charset=UTF-8");
+header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS");
+header("Access-Control-Allow-Headers: Content-Type, Access-Control-Allow-Headers, Authorization, X-Requested-With");
 
-$request_uri = $_SERVER['REQUEST_URI'];
-$path = parse_url($request_uri, PHP_URL_PATH);
+// الحصول على المسار الفعلي المطلوب وتنظيفه
+$request_uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+$endpoint = basename($request_uri);
 
-// خريطة الـ endpoints
-$routes = [
-    '/login.php' => 'login.php',
-    '/register.php' => 'register.php',
-    '/get_profile.php' => 'get_profile.php',
-    '/get_coaches.php' => 'get_coaches.php',
-    '/get_coach_availability.php' => 'get_coach_availability.php',
-    '/get_days.php' => 'get_days.php',
-    '/get_times.php' => 'get_times.php',
-    '/coach_setup.php' => 'coach_setup.php',
-    '/bookings_crud.php' => 'bookings_crud.php',
-    '/schedule.php' => 'schedule.php',
-    '/classes_crud.php' => 'classes_crud.php',
-    '/teams_crud.php' => 'teams_crud.php',
-];
-
-// لو الـ path موجود في الـ routes، شغل الملف المطلوب
-if (isset($routes[$path])) {
-    include $routes[$path];
-    exit();
-}
-
-// لو الـ path فيه query parameters (زي ?role=manager&coach_id=1)
-foreach ($routes as $route => $file) {
-    if (strpos($path, $route) === 0) {
-        include $file;
-        exit();
-    }
-}
-
-// غير كده، اطبع الـ documentation
-$documentation = [
+// مصفوفة الدليل الإرشادي للـ API (رسالة الترحيب)
+$api_documentation = [
     "status"  => "success",
     "message" => "Welcome to Swim Academy API",
     "roles" => [
@@ -46,81 +20,145 @@ $documentation = [
     ],
     "endpoints" => [
         "login" => [
-            "url"    => "/login.php",
+            "url" => "/login.php",
             "method" => "POST",
-            "roles"  => ["manager", "coach", "swimmer"],
-            "body"   => ["email", "password"]
+            "roles" => ["manager", "coach", "swimmer"],
+            "body" => ["email", "password"]
         ],
         "register" => [
-            "url"    => "/register.php",
+            "url" => "/register.php",
             "method" => "POST",
-            "roles"  => ["manager", "coach", "swimmer"],
-            "body"   => ["role", "first_name", "last_name", "email", "password", "confirm_password"]
+            "roles" => ["manager", "coach", "swimmer"],
+            "body" => ["role", "first_name", "last_name", "email", "password", "confirm_password"]
         ],
         "get_profile" => [
-            "url"    => "/get_profile.php",
+            "url" => "/get_profile.php",
             "method" => "POST",
-            "roles"  => ["manager", "coach", "swimmer"],
-            "body"   => ["user_id", "role"]
+            "roles" => ["manager", "coach", "swimmer"],
+            "body" => ["user_id", "role"]
         ],
         "get_coaches" => [
-            "url"    => "/get_coaches.php?role=manager",
+            "url" => "/get_coaches.php?role=manager",
             "method" => "GET",
-            "roles"  => ["manager"]
+            "roles" => ["manager"]
         ],
         "get_coach_availability" => [
-            "url"    => "/get_coach_availability.php?coach_id=1&role=manager&logged_coach_id=1",
+            "url" => "/get_coach_availability.php",
             "method" => "GET",
-            "roles"  => ["manager", "coach"]
+            "roles" => ["manager", "coach"]
         ],
         "get_days" => [
-            "url"    => "/get_days.php?role=manager",
+            "url" => "/get_days.php",
             "method" => "GET",
-            "roles"  => ["manager", "coach"]
+            "roles" => ["manager", "coach"]
         ],
         "get_times" => [
-            "url"    => "/get_times.php?role=manager",
+            "url" => "/get_times.php",
             "method" => "GET",
-            "roles"  => ["manager", "coach"]
+            "roles" => ["manager", "coach"]
         ],
         "coach_setup" => [
-            "url"    => "/coach_setup.php",
+            "url" => "/coach_setup.php",
             "method" => "POST",
-            "roles"  => ["manager", "coach"],
-            "body"   => ["coach_id", "days (array)", "times (array)", "role", "logged_coach_id (for coach)"]
+            "roles" => ["manager", "coach"],
+            "body" => ["coach_id", "days (array)", "times (array)", "role", "logged_coach_id (for coach)"]
         ],
         "bookings_crud" => [
-            "url"     => "/bookings_crud.php",
-            "methods" => ["GET", "POST", "PUT", "DELETE"],
-            "roles" => [
-                "GET" => [
-                    "manager" => "View all bookings",
-                    "coach"   => "View bookings for their swimmers",
-                    "swimmer" => "View own bookings"
-                ],
-                "POST"   => ["manager" => "Create new booking", "swimmer" => "Create own booking"],
-                "PUT"    => ["manager" => "Full update", "coach" => "Update bookings for their swimmers", "swimmer" => "Update own booking day/time"],
-                "DELETE" => ["manager" => "Delete booking", "coach" => "Delete bookings for their swimmers", "swimmer" => "Delete own booking"]
-            ]
+            "url" => "/bookings_crud.php",
+            "methods" => ["GET", "POST", "PUT", "DELETE"]
         ],
         "schedule" => [
-            "url"    => "/schedule.php",
+            "url" => "/schedule.php",
             "method" => "POST",
-            "roles"  => ["manager", "coach", "swimmer"],
-            "body"   => ["coach_id OR swimmer_id"]
+            "roles" => ["manager", "coach", "swimmer"],
+            "body" => ["coach_id OR swimmer_id"]
         ],
         "classes_crud" => [
-            "url"     => "/classes_crud.php",
-            "methods" => ["GET", "POST", "PUT", "DELETE"],
-            "roles"   => ["manager" => "All", "coach" => "None", "swimmer" => "None"]
+            "url" => "/classes_crud.php",
+            "methods" => ["GET", "POST", "PUT", "DELETE"]
         ],
         "teams_crud" => [
-            "url"     => "/teams_crud.php",
-            "methods" => ["GET", "POST", "PUT", "DELETE"],
-            "roles"   => ["manager" => "All", "coach" => "None", "swimmer" => "None"]
+            "url" => "/teams_crud.php",
+            "methods" => ["GET", "POST", "PUT", "DELETE"]
         ]
     ]
 ];
 
-echo json_encode($documentation, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+// نظام التوجيه الذكي (Router Switch)
+switch ($endpoint) {
+    case 'login.php':
+        if (file_exists('login.php')) { require 'login.php'; } 
+        else { http_response_code(404); echo json_encode(["status" => "error", "message" => "File login.php not found."]); }
+        break;
+
+    case 'register.php':
+        if (file_exists('register.php')) { require 'register.php'; } 
+        else { http_response_code(404); echo json_encode(["status" => "error", "message" => "File register.php not found."]); }
+        break;
+
+    case 'get_profile.php':
+        if (file_exists('get_profile.php')) { require 'get_profile.php'; }
+        else { http_response_code(404); echo json_encode(["status" => "error", "message" => "File not found."]); }
+        break;
+
+    case 'get_coaches.php':
+        if (file_exists('get_coaches.php')) { require 'get_coaches.php'; }
+        else { http_response_code(404); echo json_encode(["status" => "error", "message" => "File not found."]); }
+        break;
+
+    case 'get_coach_availability.php':
+        if (file_exists('get_coach_availability.php')) { require 'get_coach_availability.php'; }
+        else { http_response_code(404); echo json_encode(["status" => "error", "message" => "File not found."]); }
+        break;
+
+    case 'get_days.php':
+        if (file_exists('get_days.php')) { require 'get_days.php'; }
+        else { http_response_code(404); echo json_encode(["status" => "error", "message" => "File not found."]); }
+        break;
+
+    case 'get_times.php':
+        if (file_exists('get_times.php')) { require 'get_times.php'; }
+        else { http_response_code(404); echo json_encode(["status" => "error", "message" => "File not found."]); }
+        break;
+
+    case 'coach_setup.php':
+        if (file_exists('coach_setup.php')) { require 'coach_setup.php'; }
+        else { http_response_code(404); echo json_encode(["status" => "error", "message" => "File not found."]); }
+        break;
+
+    case 'bookings_crud.php':
+        if (file_exists('bookings_crud.php')) { require 'bookings_crud.php'; }
+        else { http_response_code(404); echo json_encode(["status" => "error", "message" => "File not found."]); }
+        break;
+
+    case 'schedule.php':
+        if (file_exists('schedule.php')) { require 'schedule.php'; }
+        else { http_response_code(404); echo json_encode(["status" => "error", "message" => "File not found."]); }
+        break;
+
+    case 'classes_crud.php':
+        if (file_exists('classes_crud.php')) { require 'classes_crud.php'; }
+        else { http_response_code(404); echo json_encode(["status" => "error", "message" => "File not found."]); }
+        break;
+
+    case 'teams_crud.php':
+        if (file_exists('teams_crud.php')) { require 'teams_crud.php'; }
+        else { http_response_code(404); echo json_encode(["status" => "error", "message" => "File not found."]); }
+        break;
+
+    // حالة طلب المسار الرئيسي (يطبع الدليل)
+    case 'index.php':
+    case '':
+        echo json_encode($api_documentation);
+        break;
+
+    // في حال طلب مسار غير موجود نهائياً
+    default:
+        http_response_code(404);
+        echo json_encode([
+            "status" => "error",
+            "message" => "Endpoint not found. Please refer to the API documentation by visiting the root URL."
+        ]);
+        break;
+}
 ?>
