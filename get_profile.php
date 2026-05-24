@@ -1,48 +1,59 @@
 <?php
-header("Content-type: application/json; charset=UTF-8");
+header("Access-Control-Allow-Origin: *");
+header("Access-Control-Allow-Methods: POST, OPTIONS");
+header("Access-Control-Allow-Headers: Content-Type");
+header("Content-Type: application/json; charset=UTF-8");
+
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { http_response_code(200); exit(); }
 
 include_once 'db.php';
 
-// تم التصحيح إلى json_decode لفك تشفير البيانات القادمة
 $data = json_decode(file_get_contents("php://input"));
 
 if (!empty($data->user_id) && !empty($data->role)) {
 
+    $valid_roles = ['manager', 'coach', 'swimmer'];
+
+    if (!in_array($data->role, $valid_roles)) {
+        echo json_encode(["status" => "error", "message" => "Invalid role"]);
+        exit();
+    }
+
     try {
-        $table = ($data->role == 'swimmer') ? 'swimmer' : 'coach';
+        $table = $data->role;
+        $stmt  = $conn->prepare("SELECT * FROM $table WHERE id = :id");
+        $stmt->execute([':id' => $data->user_id]);
+        $user  = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        $query = "SELECT * FROM $table WHERE id = :id";
+        if (!$user) {
+            echo json_encode(["status" => "error", "message" => "User not found"]);
+            exit();
+        }
 
-        $stmt = $conn->prepare($query);
-        $stmt->bindParam(':id', $data->user_id);
-        $stmt->execute();
+        unset($user['password']);
 
-        $user = $stmt->fetch(PDO::FETCH_ASSOC);
-
-        if ($user) {
-            unset($user['password']);
+        // للمدير: نرجع أيضاً قائمة المدربين (الفرونت بيعرضها في Profile)
+        if ($data->role === 'manager') {
+            $stmtC   = $conn->prepare(
+                "SELECT id, CONCAT(first_name, ' ', last_name) AS name FROM coach"
+            );
+            $stmtC->execute();
+            $coaches = $stmtC->fetchAll(PDO::FETCH_ASSOC);
 
             echo json_encode([
                 "status" => "success",
-                "data" => $user
+                "data"   => $user,
+                "coaches" => $coaches
             ]);
-        } else { // تم تصحيح الـ Syntax هنا
-            echo json_encode([
-                "status" => "error",
-                "message" => "User not found"
-            ]);
+        } else {
+            echo json_encode(["status" => "success", "data" => $user]);
         }
 
     } catch (PDOException $e) {
-        echo json_encode([
-            "status" => "error",
-            "message" => $e->getMessage()
-        ]);
+        echo json_encode(["status" => "error", "message" => $e->getMessage()]);
     }
-} else { // تم تصحيح الـ Syntax هنا
-    echo json_encode([
-        "status" => "error",
-        "message" => "Incomplete data"
-    ]);
+
+} else {
+    echo json_encode(["status" => "error", "message" => "user_id and role are required"]);
 }
 ?>
