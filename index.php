@@ -2,7 +2,41 @@
 header("Access-Control-Allow-Origin: *");
 header("Content-Type: application/json; charset=UTF-8");
 
-echo json_encode([
+$request_uri = $_SERVER['REQUEST_URI'];
+$path = parse_url($request_uri, PHP_URL_PATH);
+
+// خريطة الـ endpoints
+$routes = [
+    '/login.php' => 'login.php',
+    '/register.php' => 'register.php',
+    '/get_profile.php' => 'get_profile.php',
+    '/get_coaches.php' => 'get_coaches.php',
+    '/get_coach_availability.php' => 'get_coach_availability.php',
+    '/get_days.php' => 'get_days.php',
+    '/get_times.php' => 'get_times.php',
+    '/coach_setup.php' => 'coach_setup.php',
+    '/bookings_crud.php' => 'bookings_crud.php',
+    '/schedule.php' => 'schedule.php',
+    '/classes_crud.php' => 'classes_crud.php',
+    '/teams_crud.php' => 'teams_crud.php',
+];
+
+// لو الـ path موجود في الـ routes، شغل الملف المطلوب
+if (isset($routes[$path])) {
+    include $routes[$path];
+    exit();
+}
+
+// لو الـ path فيه query parameters (زي ?role=manager&coach_id=1)
+foreach ($routes as $route => $file) {
+    if (strpos($path, $route) === 0) {
+        include $file;
+        exit();
+    }
+}
+
+// غير كده، اطبع الـ documentation
+$documentation = [
     "status"  => "success",
     "message" => "Welcome to Swim Academy API",
     "roles" => [
@@ -86,5 +120,7 @@ echo json_encode([
             "roles"   => ["manager" => "All", "coach" => "None", "swimmer" => "None"]
         ]
     ]
-]);
+];
+
+echo json_encode($documentation, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
 ?>
