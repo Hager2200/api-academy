@@ -14,10 +14,12 @@ try {
     $conn = new PDO("mysql:host=$host;port=$port;dbname=$db_name;charset=utf8", $username, $password);
     $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     $conn->exec("set names utf8");
-} catch(PDOException $exception) {
+}  catch (PDOException $e) {
+    header("Content-Type: application/json; charset=UTF-8");
     echo json_encode([
-        "status" => "error",
-        "message" => "Connection error: " . $exception->getMessage()
+        "status"  => "error",
+        "message" => "Connection error: " . $e->getMessage(),
+        "code"    => $e->getCode()   // ← ضيف ده
     ]);
     exit();
 }
