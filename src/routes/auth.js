@@ -3,8 +3,8 @@ const bcrypt = require('bcryptjs');
 
 const router = express.Router();
 
-// POST /auth/login
-router.post('/auth/login', async (req, res) => {
+// POST /api/auth/login
+router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
     const db = req.db;
@@ -41,8 +41,8 @@ router.post('/auth/login', async (req, res) => {
   }
 });
 
-// POST /auth/register
-router.post('/auth/register', async (req, res) => {
+// POST /api/auth/register
+router.post('/register', async (req, res) => {
   try {
     const { role, email, password, confirm_password, first_name, last_name, phone, gender, age, level } = req.body;
     const db = req.db;
@@ -93,8 +93,8 @@ router.post('/auth/register', async (req, res) => {
   }
 });
 
-// POST /auth/profile
-router.post('/auth/profile', async (req, res) => {
+// POST /api/auth/profile
+router.post('/profile', async (req, res) => {
   try {
     const { user_id, role } = req.body;
     const db = req.db;
