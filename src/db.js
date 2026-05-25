@@ -1,10 +1,9 @@
-const mysql = require('mysql2');
-require('dotenv').config();
+const mysql = require('mysql2/promise');
 
 const pool = mysql.createPool({
     host: process.env.DB_HOST || 'localhost',
     user: process.env.DB_USER || 'root',
-    password: process.env.DB_PASSWORD || '',
+    password: process.env.DB_PASS || '123456',
     database: process.env.DB_NAME || 'swim_academy',
     port: process.env.DB_PORT || 3306,
     waitForConnections: true,
@@ -12,6 +11,4 @@ const pool = mysql.createPool({
     queueLimit: 0
 });
 
-const promisePool = pool.promise();
-
-module.exports = promisePool;
+module.exports = pool;
