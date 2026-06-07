@@ -10,6 +10,7 @@ const classesRoutes = require('./routes/classes');
 const teamsRoutes = require('./routes/teams');
 const coachRoutes = require('./routes/coach');
 const scheduleRoutes = require('./routes/schedule');
+const attendanceRoutes = require('./routes/attendance');
 
 const app = express();
 
@@ -42,6 +43,7 @@ app.use('/api/classes', classesRoutes);
 app.use('/api/teams', teamsRoutes);
 app.use('/api/coach', coachRoutes);
 app.use('/api/schedule', scheduleRoutes);
+app.use('/api/attendance', attendanceRoutes);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
