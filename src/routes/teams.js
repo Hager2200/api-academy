@@ -2,7 +2,7 @@ const express = require('express');
 
 const router = express.Router();
 
-// GET /teams
+// GET /teams — all roles
 router.get('/', async (req, res) => {
   try {
     const db = req.db;
@@ -29,9 +29,14 @@ router.get('/', async (req, res) => {
   }
 });
 
-// POST /teams
+// POST /teams — manager only
 router.post('/', async (req, res) => {
   try {
+    const role = req.user.role;
+    if (role !== 'manager') {
+      return res.status(403).json({ status: 'error', message: 'Unauthorized: Only manager can add teams' });
+    }
+
     const { team_name, day, time, coach_id } = req.body;
     const db = req.db;
 
@@ -51,16 +56,17 @@ router.post('/', async (req, res) => {
   }
 });
 
-// PUT /teams/:id
+// PUT /teams/:id — manager only
 router.put('/:id', async (req, res) => {
   try {
+    const role = req.user.role;
+    if (role !== 'manager') {
+      return res.status(403).json({ status: 'error', message: 'Unauthorized: Only manager can update teams' });
+    }
+
     const { id } = req.params;
     const { team_name, day, time, coach_id } = req.body;
     const db = req.db;
-
-    if (!id) {
-      return res.status(400).json({ status: 'error', message: 'id is required' });
-    }
 
     await db.query(
       `UPDATE team SET team_name = ?, day = ?, time = ?, coach_id = ? WHERE id = ?`,
@@ -74,15 +80,16 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-// DELETE /teams/:id
+// DELETE /teams/:id — manager only
 router.delete('/:id', async (req, res) => {
   try {
+    const role = req.user.role;
+    if (role !== 'manager') {
+      return res.status(403).json({ status: 'error', message: 'Unauthorized: Only manager can delete teams' });
+    }
+
     const { id } = req.params;
     const db = req.db;
-
-    if (!id) {
-      return res.status(400).json({ status: 'error', message: 'id is required' });
-    }
 
     await db.query(`DELETE FROM team WHERE id = ?`, [parseInt(id)]);
     return res.status(200).json({ status: 'success', message: 'Team deleted' });

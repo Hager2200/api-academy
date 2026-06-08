@@ -1,21 +1,15 @@
 const express = require('express');
-
 const router = express.Router();
 
 const DAYS_ORDER = {
-  Saturday: 0,
-  Sunday: 1,
-  Monday: 2,
-  Tuesday: 3,
-  Wednesday: 4,
-  Thursday: 5,
-  Friday: 6,
+  Saturday: 0, Sunday: 1, Monday: 2, Tuesday: 3,
+  Wednesday: 4, Thursday: 5, Friday: 6,
 };
 
-// GET /coach/list — manager only
+// GET /coach/list
 router.get('/list', async (req, res) => {
   try {
-    const { role } = req.query;
+    const { role } = req.user;
     const db = req.db;
 
     if (role !== 'manager') {
@@ -23,76 +17,59 @@ router.get('/list', async (req, res) => {
     }
 
     const [coaches] = await db.query(`SELECT id, first_name, last_name FROM coach ORDER BY first_name ASC`);
-    const formatted = coaches.map(c => ({ id: c.id, name: `${c.first_name} ${c.last_name}` }));
-
-    return res.status(200).json({ status: 'success', data: formatted });
+    return res.status(200).json({ status: 'success', data: coaches.map(c => ({ id: c.id, name: `${c.first_name} ${c.last_name}` })) });
   } catch (error) {
     console.error(error);
     return res.status(500).json({ status: 'error', message: error.message });
   }
 });
 
-// GET /coach/days — manager & coach only
+// GET /coach/days
 router.get('/days', async (req, res) => {
   try {
-    const { role } = req.query;
-
-    if (role !== 'manager' && role !== 'coach') {
-      return res.status(403).json({ status: 'error', message: 'Unauthorized' });
-    }
-
-    const days = ['Saturday', 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
-    return res.status(200).json({ status: 'success', data: days });
+    const { role } = req.user;
+    if (role === 'swimmer') return res.status(403).json({ status: 'error', message: 'Unauthorized' });
+    return res.status(200).json({ status: 'success', data: ['Saturday', 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'] });
   } catch (error) {
-    console.error(error);
     return res.status(500).json({ status: 'error', message: error.message });
   }
 });
 
-// GET /coach/times — manager & coach only
+// GET /coach/times
 router.get('/times', async (req, res) => {
   try {
-    const { role } = req.query;
-
-    if (role !== 'manager' && role !== 'coach') {
-      return res.status(403).json({ status: 'error', message: 'Unauthorized' });
-    }
-
-    const times = ['8 AM', '9 AM', '10 AM', '11 AM', '12 PM', '1 PM', '2 PM', '3 PM', '4 PM', '5 PM', '6 PM', '7 PM', '8 PM'];
-    return res.status(200).json({ status: 'success', data: times });
+    const { role } = req.user;
+    if (role === 'swimmer') return res.status(403).json({ status: 'error', message: 'Unauthorized' });
+    return res.status(200).json({ status: 'success', data: ['8 AM', '9 AM', '10 AM', '11 AM', '12 PM', '1 PM', '2 PM', '3 PM', '4 PM', '5 PM', '6 PM', '7 PM', '8 PM'] });
   } catch (error) {
-    console.error(error);
     return res.status(500).json({ status: 'error', message: error.message });
   }
 });
 
-// GET /coach/availability — manager (any coach) | coach (own only)
+// GET /coach/availability (معدل 🛠️ - لا يتطلب coach_id للمدرب نفسه)
 router.get('/availability', async (req, res) => {
   try {
-    const { role, coach_id, logged_coach_id } = req.query;
+    const { coach_id } = req.query;
+    const { role, id: userId } = req.user;
     const db = req.db;
 
-    // Swimmer blocked entirely
     if (role === 'swimmer') {
       return res.status(403).json({ status: 'error', message: 'Unauthorized' });
     }
 
-    if (role !== 'manager' && role !== 'coach') {
-      return res.status(403).json({ status: 'error', message: 'Unauthorized' });
-    }
-
-    if (!coach_id) {
-      return res.status(400).json({ status: 'error', message: 'coach_id is required' });
-    }
-
-    // Coach can only view their own availability
-    if (role === 'coach' && parseInt(coach_id) !== parseInt(logged_coach_id)) {
-      return res.status(403).json({ status: 'error', message: 'Coach can only view their own availability' });
+    let resolvedCoachId;
+    if (role === 'coach') {
+      resolvedCoachId = userId; // يقرأ تلقائياً من التوكن ولا يحتاج لـ query param
+    } else if (role === 'manager') {
+      if (!coach_id) {
+        return res.status(400).json({ status: 'error', message: 'coach_id is required for manager' });
+      }
+      resolvedCoachId = parseInt(coach_id);
     }
 
     const [availability] = await db.query(
       `SELECT * FROM coach_availability WHERE coach_id = ? ORDER BY working_day ASC, working_time ASC`,
-      [parseInt(coach_id)]
+      [resolvedCoachId]
     );
 
     const grouped = {};
@@ -113,44 +90,42 @@ router.get('/availability', async (req, res) => {
   }
 });
 
-// POST /coach/setup — manager (any coach) | coach (own only) | swimmer blocked
+// POST /coach/setup (معدل 🛠️ - لا يتطلب coach_id في الـ body للمدرب)
 router.post('/setup', async (req, res) => {
   try {
-    const { role, coach_id, days, times, logged_coach_id } = req.body;
+    const { coach_id, days, times } = req.body;
+    const { role, id: userId } = req.user;
     const db = req.db;
 
-    // Swimmer blocked entirely
     if (role === 'swimmer') {
       return res.status(403).json({ status: 'error', message: 'Unauthorized: Swimmers cannot modify coach schedules' });
     }
 
-    if (role !== 'manager' && role !== 'coach') {
-      return res.status(403).json({ status: 'error', message: 'Unauthorized' });
+    if (!days || !times) {
+      return res.status(400).json({ status: 'error', message: 'days and times are required' });
     }
 
-    if (!coach_id || !days || !times) {
-      return res.status(400).json({ status: 'error', message: 'coach_id, days, and times are required' });
+    let resolvedCoachId;
+    if (role === 'coach') {
+      resolvedCoachId = userId; // يعتمد التوكن مباشرة ويحمي البيانات
+    } else if (role === 'manager') {
+      if (!coach_id) {
+        return res.status(400).json({ status: 'error', message: 'coach_id is required for manager' });
+      }
+      resolvedCoachId = parseInt(coach_id);
     }
 
-    // Coach can only update their own schedule
-    if (role === 'coach' && parseInt(logged_coach_id) !== parseInt(coach_id)) {
-      return res.status(403).json({ status: 'error', message: 'Coach can only update their own schedule' });
-    }
-
-    await db.query(`DELETE FROM coach_availability WHERE coach_id = ?`, [parseInt(coach_id)]);
+    await db.query(`DELETE FROM coach_availability WHERE coach_id = ?`, [resolvedCoachId]);
 
     const insertData = [];
     for (const day of days) {
       for (const time of times) {
-        insertData.push([parseInt(coach_id), day, time]);
+        insertData.push([resolvedCoachId, day, time]);
       }
     }
 
     if (insertData.length > 0) {
-      await db.query(
-        `INSERT INTO coach_availability (coach_id, working_day, working_time) VALUES ?`,
-        [insertData]
-      );
+      await db.query(`INSERT INTO coach_availability (coach_id, working_day, working_time) VALUES ?`, [insertData]);
     }
 
     return res.status(200).json({ status: 'success', message: 'Coach schedule saved' });

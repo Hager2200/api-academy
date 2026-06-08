@@ -4,3 +4,4 @@ DB_USER=root
 DB_PASS=
 DB_NAME=railway
 PORT=3000
+JWT_SECRET=swim_academy_secret_2024

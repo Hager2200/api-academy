@@ -1,9 +1,11 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+const authenticate = require('../middleware/authenticate'); // تم إضافة الميدل وير هنا لحماية الراوتس الداخلية
 
 const router = express.Router();
 
-// POST /api/auth/login
+// 1️⃣ POST /api/auth/login (بدون تغيير)
 router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -25,9 +27,15 @@ router.post('/login', async (req, res) => {
           const { password: _, ...userWithoutPassword } = user;
           userWithoutPassword.role = table;
           userWithoutPassword.name = `${userWithoutPassword.first_name} ${userWithoutPassword.last_name}`;
+          const token = jwt.sign(
+            { user_id: user.id, role: table, email: user.email },
+            process.env.JWT_SECRET,
+            { expiresIn: '7d' }
+          );
           return res.status(200).json({
             status: 'success',
             message: 'Login successful',
+            token,
             user: userWithoutPassword,
           });
         }
@@ -41,7 +49,7 @@ router.post('/login', async (req, res) => {
   }
 });
 
-// POST /api/auth/register
+// 2️⃣ POST /api/auth/register (تم التعديل لمنع تكرار الإيميل عبر كل الجداول)
 router.post('/register', async (req, res) => {
   try {
     const { role, email, password, confirm_password, first_name, last_name, phone, gender, age, level } = req.body;
@@ -53,6 +61,16 @@ router.post('/register', async (req, res) => {
 
     if (password !== confirm_password) {
       return res.status(400).json({ status: 'error', message: 'Passwords do not match' });
+    }
+
+    // 🔒 [التعديل هنا] - التأكد إن الإيميل غير مستخدم في أي دور (Role) تاني في النظام
+    const tables = ['manager', 'coach', 'swimmer'];
+    for (const table of tables) {
+      const [existing] = await db.query(`SELECT id FROM \`${table}\` WHERE email = ? LIMIT 1`, [email]);
+      if (existing.length > 0) {
+        // لو الإيميل موجود في أي جدول، نوقف التسجيل فوراً
+        return res.status(409).json({ status: 'error', message: 'Email already exists in the system' });
+      }
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -82,6 +100,7 @@ router.post('/register', async (req, res) => {
         message: `${role.charAt(0).toUpperCase() + role.slice(1)} registered successfully`,
       });
     } catch (dbError) {
+      // كاتش إضافي في حالة حدوث خطأ من قاعدة البيانات
       if (dbError.code === 'ER_DUP_ENTRY') {
         return res.status(409).json({ status: 'error', message: 'Email already exists' });
       }
@@ -93,16 +112,14 @@ router.post('/register', async (req, res) => {
   }
 });
 
-// POST /api/auth/profile
-router.post('/profile', async (req, res) => {
+// 3️⃣ POST /api/auth/profile 🔐 (مؤمن بالتوكين من التعديل السابق)
+router.post('/profile', authenticate, async (req, res) => {
   try {
-    const { user_id, role } = req.body;
+    // قمنا بسحب الـ id والـ role من التوكين الموثوق الفك تشفيره وليس من الـ body
+    const { id: user_id, role } = req.user; 
     const db = req.db;
 
-    if (!user_id || !role) {
-      return res.status(400).json({ status: 'error', message: 'user_id and role are required' });
-    }
-
+    // التحقق من الصلاحية (موجود تلقائياً من الميدل وير ولكن للتأكيد)
     const validRoles = ['manager', 'coach', 'swimmer'];
     if (!validRoles.includes(role)) {
       return res.status(400).json({ status: 'error', message: 'Invalid role' });

@@ -2,7 +2,7 @@ const express = require('express');
 
 const router = express.Router();
 
-// GET /classes
+// GET /classes — all roles
 router.get('/', async (req, res) => {
   try {
     const db = req.db;
@@ -30,9 +30,14 @@ router.get('/', async (req, res) => {
   }
 });
 
-// POST /classes
+// POST /classes — manager only
 router.post('/', async (req, res) => {
   try {
+    const role = req.user.role;
+    if (role !== 'manager') {
+      return res.status(403).json({ status: 'error', message: 'Unauthorized: Only manager can add classes' });
+    }
+
     const { day, time, class_level, coach_id } = req.body;
     const db = req.db;
 
@@ -52,16 +57,17 @@ router.post('/', async (req, res) => {
   }
 });
 
-// PUT /classes/:id
+// PUT /classes/:id — manager only
 router.put('/:id', async (req, res) => {
   try {
+    const role = req.user.role;
+    if (role !== 'manager') {
+      return res.status(403).json({ status: 'error', message: 'Unauthorized: Only manager can update classes' });
+    }
+
     const { id } = req.params;
     const { day, time, class_level, coach_id } = req.body;
     const db = req.db;
-
-    if (!id) {
-      return res.status(400).json({ status: 'error', message: 'id is required' });
-    }
 
     await db.query(
       `UPDATE class SET day = ?, time = ?, class_level = ?, coach_id = ? WHERE id = ?`,
@@ -75,15 +81,16 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-// DELETE /classes/:id
+// DELETE /classes/:id — manager only
 router.delete('/:id', async (req, res) => {
   try {
+    const role = req.user.role;
+    if (role !== 'manager') {
+      return res.status(403).json({ status: 'error', message: 'Unauthorized: Only manager can delete classes' });
+    }
+
     const { id } = req.params;
     const db = req.db;
-
-    if (!id) {
-      return res.status(400).json({ status: 'error', message: 'id is required' });
-    }
 
     await db.query(`DELETE FROM class WHERE id = ?`, [parseInt(id)]);
     return res.status(200).json({ status: 'success', message: 'Class deleted' });
